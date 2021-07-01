@@ -30,4 +30,4 @@ COPY src/ /src/
 # Run everything after as non-privileged user.
 USER pptruser
 
-CMD ["node", "/src/index.js"]
+ENTRYPOINT ["node", "/src/index.js"]
