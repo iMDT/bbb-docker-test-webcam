@@ -27,7 +27,7 @@ docker run --rm -v/tmp/debug-folder:/debug imdt/bigbluebutton-docker-test-webcam
 ./run.sh "${JOIN_URL}"
 ```
 
-# Troubleshooting
+## Troubleshooting
 
 If you get into problems and want to update, just run the following command:
 
