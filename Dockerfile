@@ -27,6 +27,8 @@ RUN npm i puppeteer \
 
 COPY src/ /src/
 
+RUN mkdir -m 777 /debug
+
 # Run everything after as non-privileged user.
 USER pptruser
 
