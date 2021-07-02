@@ -10,11 +10,11 @@ function delay(time) {
 
 async function screenshot(page, who, action) {
     const now = new Date().toISOString().split('.')[0].replace(/T/g, ' ').replace(' ', '_').replace(/[:-]/g, '');
-    await page.screenshot({path: `/debug/${test_id}-${now}-${who}-${action}.png`});
+    await page.screenshot({path: `/debug/${test_id}-${who}-${now}-${action}.png`});
 }
 
 function log (who, text) {
-    fs.appendFileSync(`/debug/${test_id}-${who}.log`, text);
+    fs.appendFileSync(`/debug/${test_id}-${who}.log`, text + "\n");
 
     const pad = `                              `;
     who = String(`${pad}${who}`).slice(-pad.length);
@@ -153,6 +153,8 @@ const watcher = (async () => {
                 if(dataFromLog.mediaFlowing) {
                     testSuccess = true;
                     break;
+                } else {
+                    log('watcher-main', 'No media flowing log yet...');
                 }
             } catch (e) {
                 log('watcher-main', 'No webcam yet...');
