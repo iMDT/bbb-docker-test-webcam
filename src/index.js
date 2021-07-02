@@ -12,7 +12,7 @@ const selectors = {
     start_sharing: "button[aria-label='Start sharing']:enabled"
 };
 
-const WEBCAM_TIMEOUT = 30;
+const WEBCAM_TIMEOUT = 60;
 
 const browsers = [];
 const broadcaster = (async () => {
