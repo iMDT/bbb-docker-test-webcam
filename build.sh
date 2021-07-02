@@ -1,2 +1,2 @@
 #!/bin/bash
-docker build -t bbb-docker-test-webcam .
+docker build -t bigbluebutton-docker-test-webcam .

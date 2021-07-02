@@ -1,20 +1,34 @@
 const puppeteer = require('puppeteer');
+const test_id = (new Date()).getTime();
 
 function delay(time) {
     return new Promise(function(resolve) { 
         setTimeout(resolve, time)
     });
  }
- 
+
+async function screenshot(page, who, action) {
+    const now = new Date().toISOString().split('.')[0].replace('T', ' ');
+    await page.screenshot({path: `/debug/${test_id}-${now}-${who}-${action}.png`});
+}
+
+function log (who, text) {
+    const pad = `                              `;
+    who = String(`${pad}${who}`).slice(-pad.length);
+    console.log(`${who}\t\t`, text);
+}
+
 const selectors = {
     close_audio: "button[aria-label='Close Join audio modal']",
     share_webcam: "button[aria-label='Share webcam']",
     start_sharing: "button[aria-label='Start sharing']:enabled"
 };
 
-const WEBCAM_TIMEOUT = 60;
+const WEBCAM_TIMEOUT = 30;
 
 const browsers = [];
+
+// Browser 1 - the one that publish webcam
 const broadcaster = (async () => {
     try {
         const {argv} = process;
@@ -34,33 +48,51 @@ const broadcaster = (async () => {
         browsers.push(browser);
 
         const page = await browser.newPage();
+        page
+        .on('console', message =>
+            log('broadcaster-browser', `${message.type().substr(0, 3).toUpperCase()} ${message.text()}`))
+        .on('pageerror', ({ message }) => 
+            log('broadcaster-browser', message)) 
+        // .on('response', response =>
+        //     log('broadcaster-browser', `${response.status()} ${response.url()}`))
+        .on('requestfailed', request =>
+            log('broadcaster-browser', `${request.failure().errorText} ${request.url()}`));
+
         await page.goto(JOIN_URL);
         
         // Close audio modal
-        console.log("Wait for audio modal");
+        log('broadcaster-main', 'Wait for audio modal');
         await page.waitForSelector(selectors.close_audio);
 
-        console.log("Click on close audio modal");
+        log('broadcaster-main', 'Click on close audio modal');
         await page.click(selectors.close_audio);
         
         // Share webcam
-        console.log("Click on share webcam");
+        log('broadcaster-main', 'Click on share webcam');
         await page.click(selectors.share_webcam);
 
         // Start sharing
-        console.log("Wait for start sharing");
+        log('broadcaster-main', 'Wait for start sharing');
         await page.waitForSelector(selectors.start_sharing);
+        await screenshot(page, 'broadcaster', 'before-start-sharing');
 
-        // await page.screenshot({path: '/debug/before-start-sharing.png'});
-
-        console.log("Click on start sharing");
+        log('broadcaster-main', 'Click on start sharing');
         await page.click(selectors.start_sharing);
+
+        // Take one screenshot per second
+        for(let i = 0; i < WEBCAM_TIMEOUT; i ++ ) {
+            await screenshot(page, 'broadcaster', `${i}_seconds_after_share`);
+            await delay(1000);
+        }
+
     } catch (e) {
-        console.log(`Test result: FAILURE_OTHER`);
+        log('broadcaster-main', `Test result: FAILURE_OTHER`);
+        log('broadcaster-main', `Details: ${e}`);
         process.exit(1);
     }
 });
 
+// Browser 2 - the one that waits for image
 const watcher = (async () => {
     try {
         const {argv} = process;
@@ -77,42 +109,55 @@ const watcher = (async () => {
         browsers.push(browser);
 
         const page = await browser.newPage();
+        page
+        .on('console', message =>
+            log('watcher-browser', `${message.type().substr(0, 3).toUpperCase()} ${message.text()}`))
+        .on('pageerror', ({ message }) => 
+            log('watcher-browser', message)) 
+        // .on('response', response =>
+        //     log('watcher-browser', `${response.status()} ${response.url()}`))
+        .on('requestfailed', request =>
+            log('watcher-browser', `${request.failure().errorText} ${request.url()}`));
+
         await page.goto(JOIN_URL);
         
         // Close audio modal
-        console.log("Wait for audio modal");
+        log('watcher-main', 'Wait for audio modal');
         await page.waitForSelector(selectors.close_audio);
 
-        console.log("Click on close audio modal");
+        log('watcher-main', 'Click on close audio modal');
         await page.click(selectors.close_audio);
         
         let webcamFound = false;
 
         // Wait to see webcam
         for ( let i = 0 ; i<WEBCAM_TIMEOUT; i ++) {
+            await screenshot(page, 'watcher', `${i}_seconds_after_join`);
             try {
                 await page.waitForSelector('video', { timeout: 1000 });
-                console.log("Webcam detected!");
+                log('watcher-main', 'Webcam detected!');
+                await delay(10000);
                 webcamFound = true;
                 break;
             } catch (e) {
-                console.log("No webcam yet...");
+                log('watcher-main', 'No webcam yet...');
             }
         }
 
         // Close browsers
-        console.log("Closing browsers");
+        log('watcher-main', 'Closing browsers');
         browsers.forEach(browser => browser.close() );
 
         if(!webcamFound) {
-            console.log(`Test result: FAILURE`);
+            log('watcher-main', `Test result: FAILURE`);
             process.exit(1);
         }
 
-        console.log(`Test result: SUCCESS`);
+        log('watcher-main', `Test result: SUCCESS`);
         process.exit(0);
     } catch (e) {
-        console.log(`Test result: FAILURE_OTHER`);
+        log('watcher-main', `Test result: FAILURE_OTHER`);
+        log('watcher-main', `Details: ${e}`);
         process.exit(1);
     }
 });
