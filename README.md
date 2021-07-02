@@ -14,7 +14,7 @@ The test fails if the webcam is not detected after 30s.
 docker run --rm imdt/bigbluebutton-docker-test-webcam "${JOIN_URL}"
 ```
 
-### Stroing logs and screenshots
+### Storing logs and screenshots
 
 ```sh
 docker run --rm -v/tmp/debug-folder:/debug imdt/bigbluebutton-docker-test-webcam "${JOIN_URL}"
