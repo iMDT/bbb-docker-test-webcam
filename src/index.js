@@ -1,5 +1,6 @@
 const puppeteer = require('puppeteer');
 const test_id = (new Date()).getTime();
+const fs = require('fs');
 
 function delay(time) {
     return new Promise(function(resolve) { 
@@ -8,11 +9,13 @@ function delay(time) {
  }
 
 async function screenshot(page, who, action) {
-    const now = new Date().toISOString().split('.')[0].replace('T', ' ');
+    const now = new Date().toISOString().split('.')[0].replace(/T/g, ' ').replace(' ', '_').replace(/[:-]/g, '');
     await page.screenshot({path: `/debug/${test_id}-${now}-${who}-${action}.png`});
 }
 
 function log (who, text) {
+    fs.appendFileSync(`/debug/${test_id}-${who}.log`, text);
+
     const pad = `                              `;
     who = String(`${pad}${who}`).slice(-pad.length);
     console.log(`${who}\t\t`, text);
@@ -86,7 +89,7 @@ const broadcaster = (async () => {
         }
 
     } catch (e) {
-        log('broadcaster-main', `Test result: FAILURE_OTHER`);
+        log('broadcaster-main', `Test ${test_id} result: FAILURE_OTHER`);
         log('broadcaster-main', `Details: ${e}`);
         process.exit(1);
     }
@@ -119,6 +122,13 @@ const watcher = (async () => {
         .on('requestfailed', request =>
             log('watcher-browser', `${request.failure().errorText} ${request.url()}`));
 
+        let dataFromLog = {};
+        page.on('console', message => {
+            if(message.text().indexOf("Camera media is flowing (server)")) {
+                dataFromLog.mediaFlowing = true;
+            }
+        });
+
         await page.goto(JOIN_URL);
         
         // Close audio modal
@@ -128,17 +138,22 @@ const watcher = (async () => {
         log('watcher-main', 'Click on close audio modal');
         await page.click(selectors.close_audio);
         
-        let webcamFound = false;
+        let testSuccess = false;
 
         // Wait to see webcam
         for ( let i = 0 ; i<WEBCAM_TIMEOUT; i ++) {
             await screenshot(page, 'watcher', `${i}_seconds_after_join`);
             try {
+                // Wait for video tag
                 await page.waitForSelector('video', { timeout: 1000 });
                 log('watcher-main', 'Webcam detected!');
                 await delay(10000);
-                webcamFound = true;
-                break;
+
+                // Check for media flowing log
+                if(dataFromLog.mediaFlowing) {
+                    testSuccess = true;
+                    break;
+                }
             } catch (e) {
                 log('watcher-main', 'No webcam yet...');
             }
@@ -148,15 +163,15 @@ const watcher = (async () => {
         log('watcher-main', 'Closing browsers');
         browsers.forEach(browser => browser.close() );
 
-        if(!webcamFound) {
-            log('watcher-main', `Test result: FAILURE`);
+        if(!testSuccess) {
+            log('watcher-main', `Test ${test_id} result: FAILURE`);
             process.exit(1);
         }
 
-        log('watcher-main', `Test result: SUCCESS`);
+        log('watcher-main', `Test ${test_id} result: SUCCESS`);
         process.exit(0);
     } catch (e) {
-        log('watcher-main', `Test result: FAILURE_OTHER`);
+        log('watcher-main', `Test ${test_id} result: FAILURE_OTHER`);
         log('watcher-main', `Details: ${e}`);
         process.exit(1);
     }
