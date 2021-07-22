@@ -7,6 +7,6 @@ if [ -z "$JOIN_URL" ]; then
 fi;
 
 #Create temp dir
-mkdir -m 777 /tmp/bigbluebutton-docker-test-webcam/ &> /dev/null || true
+mkdir -m 777 /tmp/bigbluebutton-docker-test-video/ &> /dev/null || true
 
-docker run --rm -v/tmp/bigbluebutton-docker-test-webcam/:/debug/ bigbluebutton-docker-test-webcam "${JOIN_URL}" && echo 1 || echo 0
+docker run --rm -v/tmp/bigbluebutton-docker-test-video/:/debug/ bigbluebutton-docker-test-video "${JOIN_URL}" && echo 1 || echo 0
